@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Рисовалка: Сломанный Телефон</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #1c1c1c; /* Темный фон для стиля */
+            overflow: hidden;
+            touch-action: none;
+        }
+        #controls {
+            width: 100%;
+            padding: 10px;
+            background: #2b2b2b;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        canvas {
+            background-color: #ffffff;
+            touch-action: none;
+            cursor: crosshair;
+        }
+        .btn-done {
+            background-color: #248bde;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .btn-done:active {
+            background-color: #1a6fb3;
+        }
+        input[type="color"] {
+            width: 45px;
+            height: 45px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+        select {
+            padding: 8px;
+            border-radius: 8px;
+            background: #444;
+            color: white;
+            border: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <input type="color" id="colorPicker" value="#ff0000">
+    
+    <select id="lineWidth">
+        <option value="2">Тонкий</option>
+        <option value="5">Средний</option>
+        <option value="12" selected>Жирный</option>
+        <option value="25">Очень жирный</option>
+    </select>
+    
+    <button class="btn-done" id="doneBtn" onclick="sendPhoto()">ГОТОВО</button>
+</div>
+
+<canvas id="paintCanvas"></canvas>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Разворачиваем на весь экран
+
+    const canvas = document.getElementById('paintCanvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    const lineWidth = document.getElementById('lineWidth');
+    const doneBtn = document.getElementById('doneBtn');
+
+    // Подстраиваем размер холста под экран
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - document.getElementById('controls').offsetHeight;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        // Белый фон (чтобы не было прозрачности)
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    resizeCanvas();
+
+    let drawing = false;
+
+    function startDrawing(e) {
+        drawing = true;
+        draw(e);
+    }
+
+    function stopDrawing() {
+        drawing = false;
+        ctx.beginPath();
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+        
+        ctx.lineWidth = lineWidth.value;
+        ctx.strokeStyle = colorPicker.value;
+
+        // Определяем координаты (мышь или тач)
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - canvas.offsetTop;
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    // Слушатели событий
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDrawing);
+
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive: false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // Функция отправки
+    function sendPhoto() {
+        doneBtn.innerText = "Отправка...";
+        doneBtn.disabled = true;
+
+        // Делаем скриншот холста
+        const dataUrl = canvas.toDataURL("image/png");
+        
+        const result = {
+            type: 'drawing_done',
+            image: dataUrl
+        };
+        
+        // Отправляем данные в Telegram
+        tg.sendData(JSON.stringify(result));
+    }
+</script>
+</body>
+</html>

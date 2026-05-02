@@ -3,155 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Рисовалка: Сломанный Телефон</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Рисовалка</title>
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #1c1c1c;
-            overflow: hidden;
-            touch-action: none;
-        }
-        #controls {
-            width: 100%;
-            padding: 10px;
-            background: #2b2b2b;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            z-index: 10;
-        }
-        canvas {
-            background-color: #ffffff;
-            touch-action: none;
-            cursor: crosshair;
-        }
-        .btn-done {
-            background-color: #248bde;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        .btn-done:disabled {
-            background-color: #555;
-        }
-        input[type="color"] {
-            width: 40px;
-            height: 40px;
-            border: none;
-            cursor: pointer;
-        }
-        select {
-            padding: 8px;
-            border-radius: 8px;
-            background: #444;
-            color: white;
-        }
+        body { margin: 0; background: #1c1c1c; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        #controls { background: #2b2b2b; padding: 15px; display: flex; justify-content: space-around; align-items: center; }
+        canvas { background: white; touch-action: none; }
+        .info { color: white; font-size: 12px; text-align: center; background: #444; padding: 5px; }
+        input[type="color"] { width: 40px; height: 40px; border-radius: 5px; border: none; }
+        button { padding: 10px; border-radius: 5px; border: none; background: #d32f2f; color: white; font-weight: bold; }
     </style>
 </head>
 <body>
+    <div class="info">Нарисуй, сделай скриншот и отправь его боту в чат!</div>
+    <div id="controls">
+        <input type="color" id="color" value="#000000">
+        <select id="width">
+            <option value="3">Тонко</option>
+            <option value="8" selected>Средне</option>
+            <option value="15">Жирно</option>
+        </select>
+        <button onclick="clearCanvas()">ОЧИСТИТЬ</button>
+    </div>
+    <canvas id="canvas"></canvas>
 
-<div id="controls">
-    <input type="color" id="colorPicker" value="#000000">
-    
-    <select id="lineWidth">
-        <option value="2">Тонкий</option>
-        <option value="5" selected>Средний</option>
-        <option value="12">Жирный</option>
-    </select>
-    
-    <button class="btn-done" id="doneBtn" onclick="sendPhoto()">ГОТОВО</button>
-</div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const color = document.getElementById('color');
+        const width = document.getElementById('width');
 
-<canvas id="paintCanvas"></canvas>
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 100;
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+        window.onresize = resize;
+        resize();
 
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+        let drawing = false;
+        const getPos = (e) => ({
+            x: e.touches ? e.touches[0].clientX : e.clientX,
+            y: (e.touches ? e.touches[0].clientY : e.clientY) - canvas.offsetTop
+        });
 
-    const canvas = document.getElementById('paintCanvas');
-    const ctx = canvas.getContext('2d');
-    const colorPicker = document.getElementById('colorPicker');
-    const lineWidth = document.getElementById('lineWidth');
-    const doneBtn = document.getElementById('doneBtn');
-
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight - document.getElementById('controls').offsetHeight;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    resizeCanvas();
-
-    let drawing = false;
-
-    function getCoords(e) {
-        const x = e.touches ? e.touches[0].clientX : e.clientX;
-        const y = (e.touches ? e.touches[0].clientY : e.clientY) - canvas.offsetTop;
-        return { x, y };
-    }
-
-    function startDrawing(e) {
-        drawing = true;
-        const coords = getCoords(e);
-        ctx.beginPath();
-        ctx.moveTo(coords.x, coords.y);
-    }
-
-    function draw(e) {
-        if (!drawing) return;
-        const coords = getCoords(e);
-        ctx.lineWidth = lineWidth.value;
-        ctx.strokeStyle = colorPicker.value;
-        ctx.lineTo(coords.x, coords.y);
-        ctx.stroke();
-    }
-
-    function stopDrawing() {
-        drawing = false;
-    }
-
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDrawing);
-
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive: false});
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
-    canvas.addEventListener('touchend', stopDrawing);
-
-    function sendPhoto() {
-        // Визуальный фидбек
-        doneBtn.innerText = "Отправка...";
-        doneBtn.disabled = true;
-
-        // Создаем изображение
-        const dataUrl = canvas.toDataURL("image/png");
-        
-        const result = {
-            type: 'drawing_done',
-            image: dataUrl
+        const start = (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+        const move = (e) => { 
+            if(!drawing) return; 
+            const p = getPos(e); 
+            ctx.strokeStyle = color.value; 
+            ctx.lineWidth = width.value; 
+            ctx.lineTo(p.x, p.y); 
+            ctx.stroke(); 
         };
-        
-        // 1. Отправляем данные в бот
-        tg.sendData(JSON.stringify(result));
+        const stop = () => drawing = false;
 
-        // 2. Закрываем приложение через небольшую паузу
-        setTimeout(() => {
-            tg.close();
-        }, 200);
-    }
-</script>
+        canvas.onmousedown = start; canvas.onmousemove = move; window.onmouseup = stop;
+        canvas.ontouchstart = (e) => { e.preventDefault(); start(e); };
+        canvas.ontouchmove = (e) => { e.preventDefault(); move(e); };
+        canvas.ontouchend = stop;
+
+        function clearCanvas() {
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    </script>
 </body>
 </html>

@@ -2,73 +2,454 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Рисовалка</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Казино с Сохранением</title>
     <style>
-        body { margin: 0; background: #1c1c1c; font-family: sans-serif; overflow: hidden; touch-action: none; }
-        #controls { background: #2b2b2b; padding: 15px; display: flex; justify-content: space-around; align-items: center; }
-        canvas { background: white; touch-action: none; }
-        .info { color: white; font-size: 12px; text-align: center; background: #444; padding: 5px; }
-        input[type="color"] { width: 40px; height: 40px; border-radius: 5px; border: none; }
-        button { padding: 10px; border-radius: 5px; border: none; background: #d32f2f; color: white; font-weight: bold; }
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #ffcc00;
+            font-size: 3rem;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .balance-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            text-align: center;
+            min-width: 300px;
+            margin-bottom: 20px;
+        }
+
+        .balance-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #bbb;
+        }
+
+        .currencies {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .crypto-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #333;
+            width: 70px;
+        }
+
+        .crypto-item.selected {
+            border-color: #ff3366;
+            box-shadow: 0 0 15px #ff3366;
+            transform: scale(1.05);
+        }
+
+        .cube {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+        }
+        .yellow-cube { background-color: #ffd700; box-shadow: 0 0 10px #ffd700; }
+        .blue-cube { background-color: #00c8ff; box-shadow: 0 0 10px #00c8ff; }
+        .green-cube { background-color: #00ff66; box-shadow: 0 0 10px #00ff66; }
+        
+        .dollar-sign {
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2ecc71;
+            text-align: center;
+        }
+
+        .withdraw-btn {
+            color: #00c8ff;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-top: 15px;
+            display: inline-block;
+        }
+
+        .bet-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            text-align: center;
+            width: 340px;
+            margin-bottom: 20px;
+        }
+
+        .bet-section input {
+            width: 80%;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .main-btn {
+            background: #ff3366;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 85%;
+            transition: 0.2s;
+        }
+        .main-btn:hover { background: #ff5588; }
+
+        .boxes-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .box {
+            width: 50px;
+            height: 50px;
+            background: #444;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+        .box:hover { background: #555; }
+        .box.disabled { pointer-events: none; opacity: 0.6; }
+
+        .system-msg {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+
+        /* Модалка вывода */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .modal-content {
+            background: #222;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #00c8ff;
+            width: 350px;
+            text-align: center;
+        }
+
+        .exchange-row {
+            margin: 15px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 8px;
+        }
+
+        .exchange-row h4 { margin: 0 0 10px 0; }
+
+        .ex-btn {
+            background: #00c8ff;
+            color: black;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .ex-btn:hover { background: #55e0ff; }
+
+        .back-btn {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 15px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* Кнопка сброса для тестов */
+        .reset-btn {
+            background: transparent;
+            color: #555;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+        }
+        .reset-btn:hover { color: #ff3366; border-color: #ff3366; }
     </style>
 </head>
 <body>
-    <div class="info">Нарисуй, сделай скриншот и отправь его боту в чат!</div>
-    <div id="controls">
-        <input type="color" id="color" value="#000000">
-        <select id="width">
-            <option value="3">Тонко</option>
-            <option value="8" selected>Средне</option>
-            <option value="15">Жирно</option>
-        </select>
-        <button onclick="clearCanvas()">ОЧИСТИТЬ</button>
+
+    <h1>КАЗИНО</h1>
+
+    <div class="balance-container">
+        <div class="balance-title">Ваш Баланс</div>
+        <p style="font-size: 0.9rem; color: #888; margin-top:-10px;">(Кликните на кубик или $, чтобы выбрать валюту)</p>
+        <div class="currencies">
+            <div class="crypto-item selected" onclick="selectCurrency('yellow')" id="coin-yellow">
+                <div class="cube yellow-cube"></div>
+                <span id="bal-yellow">3</span>
+            </div>
+            <div class="crypto-item" onclick="selectCurrency('blue')" id="coin-blue">
+                <div class="cube blue-cube"></div>
+                <span id="bal-blue">0</span>
+            </div>
+            <div class="crypto-item" onclick="selectCurrency('green')" id="coin-green">
+                <div class="cube green-cube"></div>
+                <span id="bal-green">0</span>
+            </div>
+            <div class="crypto-item" onclick="selectCurrency('usd')" id="coin-usd">
+                <div class="dollar-sign">$</div>
+                <span id="bal-usd">0</span>
+            </div>
+        </div>
+        <div class="withdraw-btn" onclick="openModal()">Вывод / Обмен валюты</div>
     </div>
-    <canvas id="canvas"></canvas>
+
+    <div class="bet-section">
+        <h3>Сделать Ставку</h3>
+        <input type="number" id="bet-amount" placeholder="Введите сумму" min="1" value="1">
+        <button class="main-btn" onclick="startBet()">Подтвердить ставку</button>
+        
+        <div class="system-msg" id="msg">Выберите валюту наверху, введите сумму и нажмите кнопку</div>
+
+        <div class="boxes-container">
+            <div class="box disabled" onclick="clickBox(1)" id="box1">?</div>
+            <div class="box disabled" onclick="clickBox(2)" id="box2">?</div>
+            <div class="box disabled" onclick="clickBox(3)" id="box3">?</div>
+            <div class="box disabled" onclick="clickBox(4)" id="box4">?</div>
+            <div class="box disabled" onclick="clickBox(5)" id="box5">?</div>
+        </div>
+    </div>
+
+    <!-- Модалка -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <h3>Обменный Пункт</h3>
+            
+            <div class="exchange-row">
+                <h4>Желтый кубик ↔ 100$</h4>
+                <button class="ex-btn" onclick="exchange('yellow', 'usd')">Кубик в $</button>
+                <button class="ex-btn" onclick="exchange('usd', 'yellow')">$ в Кубик</button>
+            </div>
+
+            <div class="exchange-row">
+                <h4>Голубой кубик ↔ 500$</h4>
+                <button class="ex-btn" onclick="exchange('blue', 'usd')">Кубик в $</button>
+                <button class="ex-btn" onclick="exchange('usd', 'blue')">$ в Кубик</button>
+            </div>
+
+            <div class="exchange-row">
+                <h4>Изумрудный кубик ↔ 1000$</h4>
+                <button class="ex-btn" onclick="exchange('green', 'usd')">Кубик в $</button>
+                <button class="ex-btn" onclick="exchange('usd', 'green')">$ в Кубик</button>
+            </div>
+
+            <button class="back-btn" onclick="closeModal()">Назад</button>
+        </div>
+    </div>
+
+    <!-- Кнопка сбросить прогресс, если проигрался -->
+    <button class="reset-btn" onclick="resetGame()">Сбросить прогресс (Выдать 3 желтых)</button>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const color = document.getElementById('color');
-        const width = document.getElementById('width');
+        // Базовый баланс по умолчанию
+        const defaultBalances = { yellow: 3, blue: 0, green: 0, usd: 0 };
+        let balances = {};
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight - 100;
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
+        let selectedCurrency = 'yellow';
+        let currentBet = 0;
+        let isGameActive = false;
+
+        // ЗАГРУЗКА ДАННЫХ: Проверяем, есть ли сохраненный JSON в браузере
+        function loadGame() {
+            const savedData = localStorage.getItem('casino_save_data');
+            if (savedData) {
+                // Если сейв есть, превращаем строку JSON обратно в объект JavaScript
+                balances = JSON.parse(savedData);
+            } else {
+                // Если сейва нет (первый заход), ставим 3 желтых кубика
+                balances = { ...defaultBalances };
+            }
+            updateUI();
         }
-        window.onresize = resize;
-        resize();
 
-        let drawing = false;
-        const getPos = (e) => ({
-            x: e.touches ? e.touches[0].clientX : e.clientX,
-            y: (e.touches ? e.touches[0].clientY : e.clientY) - canvas.offsetTop
-        });
-
-        const start = (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-        const move = (e) => { 
-            if(!drawing) return; 
-            const p = getPos(e); 
-            ctx.strokeStyle = color.value; 
-            ctx.lineWidth = width.value; 
-            ctx.lineTo(p.x, p.y); 
-            ctx.stroke(); 
-        };
-        const stop = () => drawing = false;
-
-        canvas.onmousedown = start; canvas.onmousemove = move; window.onmouseup = stop;
-        canvas.ontouchstart = (e) => { e.preventDefault(); start(e); };
-        canvas.ontouchmove = (e) => { e.preventDefault(); move(e); };
-        canvas.ontouchend = stop;
-
-        function clearCanvas() {
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // СОХРАНЕНИЕ ДАННЫХ: Переводим данные в JSON строку и сохраняем
+        function saveGame() {
+            localStorage.setItem('casino_save_data', JSON.stringify(balances));
         }
+
+        function updateUI() {
+            document.getElementById('bal-yellow').innerText = balances.yellow;
+            document.getElementById('bal-blue').innerText = balances.blue;
+            document.getElementById('bal-green').innerText = balances.green;
+            document.getElementById('bal-usd').innerText = balances.usd;
+        }
+
+        function selectCurrency(currency) {
+            if (isGameActive) return;
+            selectedCurrency = currency;
+            document.querySelectorAll('.crypto-item').forEach(item => item.classList.remove('selected'));
+            
+            if(currency === 'yellow') document.getElementById('coin-yellow').classList.add('selected');
+            if(currency === 'blue') document.getElementById('coin-blue').classList.add('selected');
+            if(currency === 'green') document.getElementById('coin-green').classList.add('selected');
+            if(currency === 'usd') document.getElementById('coin-usd').classList.add('selected');
+        }
+
+        function startBet() {
+            if (isGameActive) return;
+
+            let betInput = document.getElementById('bet-amount').value;
+            currentBet = parseInt(betInput);
+
+            if (isNaN(currentBet) || currentBet <= 0) {
+                document.getElementById('msg').style.color = 'red';
+                document.getElementById('msg').innerText = 'Введите корректную ставку!';
+                return;
+            }
+
+            if (balances[selectedCurrency] < currentBet) {
+                document.getElementById('msg').style.color = 'red';
+                document.getElementById('msg').innerText = 'Недостаточно средств!';
+                return;
+            }
+
+            balances[selectedCurrency] -= currentBet;
+            updateUI();
+            saveGame(); // Сохраняем после списания ставки
+            
+            isGameActive = true;
+            document.getElementById('msg').style.color = '#ffcc00';
+            document.getElementById('msg').innerText = 'Ставка принята! Выберите один из 5 боксов.';
+
+            for (let i = 1; i <= 5; i++) {
+                let box = document.getElementById('box' + i);
+                box.classList.remove('disabled');
+                box.innerText = '?';
+                box.style.background = '#444';
+            }
+        }
+
+        function clickBox(boxNumber) {
+            if (!isGameActive) return;
+
+            let isWin = Math.random() < 0.5;
+            let clickedBox = document.getElementById('box' + boxNumber);
+
+            if (isWin) {
+                let winAmount = currentBet * 2;
+                balances[selectedCurrency] += winAmount;
+                clickedBox.style.background = '#00ff66';
+                clickedBox.innerText = 'X2';
+                document.getElementById('msg').style.color = '#00ff66';
+                document.getElementById('msg').innerText = `Вы выиграли! +${winAmount}`;
+            } else {
+                clickedBox.style.background = '#ff3366';
+                clickedBox.innerText = '0';
+                document.getElementById('msg').style.color = '#ff3366';
+                document.getElementById('msg').innerText = 'Вы проиграли ставку!';
+            }
+
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById('box' + i).classList.add('disabled');
+            }
+            
+            isGameActive = false;
+            updateUI();
+            saveGame(); // Сохраняем после исхода игры
+        }
+
+        function openModal() {
+            if (isGameActive) return;
+            document.getElementById('withdrawModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('withdrawModal').style.display = 'none';
+        }
+
+        function exchange(from, to) {
+            let rates = { yellow: 100, blue: 500, green: 1000 };
+
+            if (from !== 'usd' && to === 'usd') {
+                if (balances[from] >= 1) {
+                    balances[from] -= 1;
+                    balances.usd += rates[from];
+                } else {
+                    alert("У вас нет этого кубика для обмена!");
+                    return;
+                }
+            } else if (from === 'usd' && to !== 'usd') {
+                if (balances.usd >= rates[to]) {
+                    balances.usd -= rates[to];
+                    balances[to] += 1;
+                } else {
+                    alert(`Недостаточно долларов! Нужно минимум $${rates[to]}`);
+                    return;
+                }
+            }
+            updateUI();
+            saveGame(); // Сохраняем после обмена
+        }
+
+        // Функция полного сброса прогресса
+        function resetGame() {
+            if (confirm("Вы точно хотите сбросить баланс до стартовых 3 желтых кубиков?")) {
+                balances = { ...defaultBalances };
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // Запуск автозагрузки при открытии страницы
+        loadGame();
     </script>
 </body>
 </html>

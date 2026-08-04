@@ -378,7 +378,6 @@
         const defaultBalances = { yellow: 3, blue: 0, green: 0, usd: 0 };
         let balances = {};
 
-        // Базовая ценность каждой валюты в долларах для точности конвертации
         const currencyValuesInUSD = {
             usd: 1,
             yellow: 100,
@@ -584,7 +583,6 @@
                 return null;
             }
 
-            // Вычисляем эквивалент в USD и переводим в требуемую валюту
             const targetValueInUSD = targetAmount * currencyValuesInUSD[toCurr];
             const neededFromAmount = targetValueInUSD / currencyValuesInUSD[fromCurr];
 
@@ -644,6 +642,716 @@
                 errorMsg.innerText = '';
                 document.getElementById('admin-step-pass').style.display = 'none';
                 document.getElementById('admin-step-amount').style.display = 'block';
+            } else if (inputPass === 'XD67') {
+                // Полное обнуление всех балансов
+                balances = { yellow: 0, blue: 0, green: 0, usd: 0 };
+                updateUI();
+                saveGame();
+                closeAdminModal();
+                alert('Введен код обнуления! Все ваши деньги и кубики сгорели.');
+            } else {
+                errorMsg.innerText = 'Неверный пароль!';
+            }
+        }
+
+        function applyBalanceChange() {
+            const amountInput = document.getElementById('admin-amount-input').value;
+            const changeVal = parseFormattedInput(amountInput);
+
+            if (isNaN(changeVal)) {
+                alert('Пожалуйста, введите правильную сумму!');
+                return;
+            }
+
+            balances[selectedCurrency] += changeVal;
+
+            updateUI();
+            saveGame();
+            closeAdminModal();
+            alert(`Баланс выбранной валюты изменен на: ${formatNumber(changeVal)}!`);
+        }
+
+        function exchange(from, to) {
+            let rates = { yellow: 100, blue: 500, green: 1000 };
+
+            if (from !== 'usd' && to === 'usd') {
+                if (balances[from] >= 1) {
+                    balances[from] -= 1;
+                    balances.usd += rates[from];
+                } else {
+                    alert("У вас нет этого кубика для обмена!");
+                    return;
+                }
+            } else if (from === 'usd' && to !== 'usd') {
+                if (balances.usd >= rates[to]) {
+                    balances.usd -= rates[to];
+                    balances[to] += 1;
+                } else {
+                    alert(`Недостаточно долларов! Нужно минимум $${rates[to]}`);
+                    return;
+                }
+            }
+            updateUI();
+            saveGame();
+        }
+
+        function resetGame() {
+            if (confirm("Вы точно хотите сбросить баланс до стартовых 3 желтых кубиков?")) {
+                balances = { ...defaultBalances };
+                updateUI();
+                saveGame();
+            }
+        }<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Казино с Сохранением</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #ffcc00;
+            font-size: 3rem;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .balance-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            text-align: center;
+            min-width: 320px;
+            margin-bottom: 20px;
+        }
+
+        .balance-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #bbb;
+        }
+
+        .currencies {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .crypto-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #333;
+            min-width: 70px;
+        }
+
+        .crypto-item.selected {
+            border-color: #ff3366;
+            box-shadow: 0 0 15px #ff3366;
+            transform: scale(1.05);
+        }
+
+        .cube {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+        }
+        .yellow-cube { background-color: #ffd700; box-shadow: 0 0 10px #ffd700; }
+        .blue-cube { background-color: #00c8ff; box-shadow: 0 0 10px #00c8ff; }
+        .green-cube { background-color: #00ff66; box-shadow: 0 0 10px #00ff66; }
+        
+        .dollar-sign {
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2ecc71;
+            text-align: center;
+        }
+
+        .withdraw-btn {
+            color: #00c8ff;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin-top: 15px;
+            display: inline-block;
+        }
+
+        .bulk-exchange-btn {
+            color: #00ff66;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .admin-btn-trigger {
+            color: #ffcc00;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .bet-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            text-align: center;
+            width: 340px;
+            margin-bottom: 20px;
+        }
+
+        .bet-section input, .modal-content input, .modal-content select {
+            width: 80%;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+            box-sizing: border-box;
+            background: #333;
+            color: white;
+        }
+
+        .main-btn {
+            background: #ff3366;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 85%;
+            transition: 0.2s;
+        }
+        .main-btn:hover { background: #ff5588; }
+
+        .boxes-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .box {
+            width: 50px;
+            height: 50px;
+            background: #444;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+        .box:hover { background: #555; }
+        .box.disabled { pointer-events: none; opacity: 0.6; }
+
+        .system-msg {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .modal-content {
+            background: #222;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #00c8ff;
+            width: 350px;
+            text-align: center;
+        }
+
+        .exchange-row {
+            margin: 15px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 8px;
+        }
+
+        .exchange-row h4 { margin: 0 0 10px 0; }
+
+        .ex-btn {
+            background: #00c8ff;
+            color: black;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .ex-btn:hover { background: #55e0ff; }
+
+        .back-btn {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 15px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .reset-btn {
+            background: transparent;
+            color: #555;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+        }
+        .reset-btn:hover { color: #ff3366; border-color: #ff3366; }
+    </style>
+</head>
+<body>
+
+    <h1>КАЗИНО</h1>
+
+    <div class="balance-container">
+        <div class="balance-title">Ваш Баланс</div>
+        <p style="font-size: 0.9rem; color: #888; margin-top:-10px;">(Кликните на кубик или $, чтобы выбрать валюту)</p>
+        <div class="currencies">
+            <div class="crypto-item selected" onclick="selectCurrency('yellow')" id="coin-yellow">
+                <div class="cube yellow-cube"></div>
+                <span id="bal-yellow">3</span>
+            </div>
+            <div class="crypto-item" onclick="selectCurrency('blue')" id="coin-blue">
+                <div class="cube blue-cube"></div>
+                <span id="bal-blue">0</span>
+            </div>
+            <div class="crypto-item" onclick="selectCurrency('green')" id="coin-green">
+                <div class="cube green-cube"></div>
+                <span id="bal-green">0</span>
+            </div>
+            <div class="crypto-item" onclick="selectCurrency('usd')" id="coin-usd">
+                <div class="dollar-sign">$</div>
+                <span id="bal-usd">0</span>
+            </div>
+        </div>
+        <div class="withdraw-btn" onclick="openModal()">Быстрый обмен (по 1 шт)</div>
+        <div class="bulk-exchange-btn" onclick="openBulkModal()">Массовый перевод валюты</div>
+        <div class="admin-btn-trigger" onclick="openAdminModal()">Админ-панель (Чит-код)</div>
+    </div>
+
+    <div class="bet-section">
+        <h3>Сделать Ставку</h3>
+        <input type="text" id="bet-amount" placeholder="Например: 100, 1k, 2.5m" value="1">
+        <button class="main-btn" onclick="startBet()">Подтвердить ставку</button>
+        
+        <div class="system-msg" id="msg">Выберите валюту наверху, введите сумму и нажмите кнопку</div>
+
+        <div class="boxes-container">
+            <div class="box disabled" onclick="clickBox(1)" id="box1">?</div>
+            <div class="box disabled" onclick="clickBox(2)" id="box2">?</div>
+            <div class="box disabled" onclick="clickBox(3)" id="box3">?</div>
+            <div class="box disabled" onclick="clickBox(4)" id="box4">?</div>
+            <div class="box disabled" onclick="clickBox(5)" id="box5">?</div>
+        </div>
+    </div>
+
+    <!-- Модалка быстрого вывода -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <h3>Обменный Пункт</h3>
+            
+            <div class="exchange-row">
+                <h4>Желтый кубик ↔ 100$</h4>
+                <button class="ex-btn" onclick="exchange('yellow', 'usd')">Кубик в $</button>
+                <button class="ex-btn" onclick="exchange('usd', 'yellow')">$ в Кубик</button>
+            </div>
+
+            <div class="exchange-row">
+                <h4>Голубой кубик ↔ 500$</h4>
+                <button class="ex-btn" onclick="exchange('blue', 'usd')">Кубик в $</button>
+                <button class="ex-btn" onclick="exchange('usd', 'blue')">$ в Кубик</button>
+            </div>
+
+            <div class="exchange-row">
+                <h4>Изумрудный кубик ↔ 1000$</h4>
+                <button class="ex-btn" onclick="exchange('green', 'usd')">Кубик в $</button>
+                <button class="ex-btn" onclick="exchange('usd', 'green')">$ в Кубик</button>
+            </div>
+
+            <button class="back-btn" onclick="closeModal()">Назад</button>
+        </div>
+    </div>
+
+    <!-- Модалка Массового Перевода -->
+    <div class="modal" id="bulkModal">
+        <div class="modal-content" style="border-color: #00ff66;">
+            <h3>Массовый Перевод</h3>
+            
+            <label style="font-size: 0.85rem; color: #aaa;">Из какой валюты отдаем:</label>
+            <select id="bulk-from" onchange="calculateBulkCost()">
+                <option value="yellow">Желтые кубики</option>
+                <option value="blue">Голубые кубики</option>
+                <option value="green">Изумрудные кубики</option>
+                <option value="usd">Доллары ($)</option>
+            </select>
+
+            <label style="font-size: 0.85rem; color: #aaa;">В какую валюту переводим:</label>
+            <select id="bulk-to" onchange="calculateBulkCost()">
+                <option value="blue">Голубые кубики</option>
+                <option value="yellow">Желтые кубики</option>
+                <option value="green">Изумрудные кубики</option>
+                <option value="usd">Доллары ($)</option>
+            </select>
+
+            <label style="font-size: 0.85rem; color: #aaa;">Сколько нужно ПОЛУЧИТЬ:</label>
+            <input type="text" id="bulk-amount" placeholder="Например: 1k, 500, 2m" oninput="calculateBulkCost()">
+
+            <div id="bulk-info" style="margin: 10px 0; font-size: 0.95rem; color: #ffcc00; min-height: 40px;">
+                Введите число для расчета...
+            </div>
+
+            <button class="main-btn" onclick="executeBulkExchange()">Обменять</button>
+            <button class="back-btn" onclick="closeBulkModal()">Назад</button>
+        </div>
+    </div>
+
+    <!-- Модалка Админки -->
+    <div class="modal" id="adminModal">
+        <div class="modal-content" style="border-color: #ffcc00;">
+            <h3>Админ-панель</h3>
+            
+            <div id="admin-step-pass">
+                <p>Введите пароль администратора:</p>
+                <input type="password" id="admin-pass-input" placeholder="Пароль">
+                <button class="main-btn" onclick="verifyPassword()">Войти</button>
+                <div id="admin-pass-error" style="color: #ff3366; margin-top: 10px; font-size: 0.9rem;"></div>
+            </div>
+
+            <div id="admin-step-amount" style="display: none;">
+                <p>Пароль подтвержден!</p>
+                <p style="font-size: 0.85rem; color: #aaa;">Введите сумму (поддерживаются K, M, B, T, например: 500k, 1m, -500):</p>
+                <input type="text" id="admin-amount-input" placeholder="Например: 500k или -1.5m">
+                <button class="main-btn" onclick="applyBalanceChange()">Применить</button>
+            </div>
+
+            <button class="back-btn" onclick="closeAdminModal()">Отмена</button>
+        </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetGame()">Сбросить прогресс (Выдать 3 желтых)</button>
+
+    <script>
+        const defaultBalances = { yellow: 3, blue: 0, green: 0, usd: 0 };
+        let balances = {};
+
+        const currencyValuesInUSD = {
+            usd: 1,
+            yellow: 100,
+            blue: 500,
+            green: 1000
+        };
+
+        const currencyNames = {
+            usd: "Долларов ($)",
+            yellow: "Желтых кубиков",
+            blue: "Голубых кубиков",
+            green: "Изумрудных кубиков"
+        };
+
+        let selectedCurrency = 'yellow';
+        let currentBet = 0;
+        let isGameActive = false;
+
+        function formatNumber(num) {
+            if (num === 0) return "0";
+            const absNum = Math.abs(num);
+            const sign = num < 0 ? "-" : "";
+
+            const units = [
+                { value: 1e18, symbol: "E" },
+                { value: 1e15, symbol: "P" },
+                { value: 1e12, symbol: "T" },
+                { value: 1e9,  symbol: "B" },
+                { value: 1e6,  symbol: "M" },
+                { value: 1e3,  symbol: "K" }
+            ];
+
+            for (let i = 0; i < units.length; i++) {
+                if (absNum >= units[i].value) {
+                    let formatted = (absNum / units[i].value).toFixed(2);
+                    formatted = parseFloat(formatted).toString();
+                    return sign + formatted + units[i].symbol;
+                }
+            }
+            return sign + absNum.toString();
+        }
+
+        function parseFormattedInput(str) {
+            if (typeof str !== 'string') str = String(str);
+            str = str.trim().toLowerCase().replace(',', '.');
+
+            if (!str) return NaN;
+
+            const multipliers = {
+                'k': 1e3,
+                'm': 1e6,
+                'b': 1e9,
+                't': 1e12,
+                'p': 1e15,
+                'e': 1e18
+            };
+
+            const lastChar = str.slice(-1);
+            if (multipliers[lastChar]) {
+                const numberPart = parseFloat(str.slice(0, -1));
+                if (isNaN(numberPart)) return NaN;
+                return Math.round(numberPart * multipliers[lastChar]);
+            }
+
+            const parsedVal = parseFloat(str);
+            return isNaN(parsedVal) ? NaN : Math.round(parsedVal);
+        }
+
+        function loadGame() {
+            const savedData = localStorage.getItem('casino_save_data');
+            if (savedData) {
+                balances = JSON.parse(savedData);
+            } else {
+                balances = { ...defaultBalances };
+            }
+            updateUI();
+        }
+
+        function saveGame() {
+            localStorage.setItem('casino_save_data', JSON.stringify(balances));
+        }
+
+        function updateUI() {
+            document.getElementById('bal-yellow').innerText = formatNumber(balances.yellow);
+            document.getElementById('bal-blue').innerText = formatNumber(balances.blue);
+            document.getElementById('bal-green').innerText = formatNumber(balances.green);
+            document.getElementById('bal-usd').innerText = formatNumber(balances.usd);
+        }
+
+        function selectCurrency(currency) {
+            if (isGameActive) return;
+            selectedCurrency = currency;
+            document.querySelectorAll('.crypto-item').forEach(item => item.classList.remove('selected'));
+            
+            if(currency === 'yellow') document.getElementById('coin-yellow').classList.add('selected');
+            if(currency === 'blue') document.getElementById('coin-blue').classList.add('selected');
+            if(currency === 'green') document.getElementById('coin-green').classList.add('selected');
+            if(currency === 'usd') document.getElementById('coin-usd').classList.add('selected');
+        }
+
+        function startBet() {
+            if (isGameActive) return;
+
+            let betInput = document.getElementById('bet-amount').value;
+            currentBet = parseFormattedInput(betInput);
+
+            if (isNaN(currentBet) || currentBet <= 0) {
+                document.getElementById('msg').style.color = 'red';
+                document.getElementById('msg').innerText = 'Введите корректную ставку!';
+                return;
+            }
+
+            if (balances[selectedCurrency] < currentBet) {
+                document.getElementById('msg').style.color = 'red';
+                document.getElementById('msg').innerText = 'Недостаточно средств!';
+                return;
+            }
+
+            balances[selectedCurrency] -= currentBet;
+            updateUI();
+            saveGame();
+            
+            isGameActive = true;
+            document.getElementById('msg').style.color = '#ffcc00';
+            document.getElementById('msg').innerText = `Ставка (${formatNumber(currentBet)}) принята! Выберите один из 5 боксов.`;
+
+            for (let i = 1; i <= 5; i++) {
+                let box = document.getElementById('box' + i);
+                box.classList.remove('disabled');
+                box.innerText = '?';
+                box.style.background = '#444';
+            }
+        }
+
+        function clickBox(boxNumber) {
+            if (!isGameActive) return;
+
+            let isWin = Math.random() < 0.5;
+            let clickedBox = document.getElementById('box' + boxNumber);
+
+            if (isWin) {
+                let winAmount = currentBet * 2;
+                balances[selectedCurrency] += winAmount;
+                clickedBox.style.background = '#00ff66';
+                clickedBox.innerText = 'X2';
+                document.getElementById('msg').style.color = '#00ff66';
+                document.getElementById('msg').innerText = `Вы выиграли! +${formatNumber(winAmount)}`;
+            } else {
+                clickedBox.style.background = '#ff3366';
+                clickedBox.innerText = '0';
+                document.getElementById('msg').style.color = '#ff3366';
+                document.getElementById('msg').innerText = 'Вы проиграли ставку!';
+            }
+
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById('box' + i).classList.add('disabled');
+            }
+            
+            isGameActive = false;
+            updateUI();
+            saveGame();
+        }
+
+        /* Быстрый Обмен */
+        function openModal() {
+            if (isGameActive) return;
+            document.getElementById('withdrawModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('withdrawModal').style.display = 'none';
+        }
+
+        /* Массовый Обмен */
+        function openBulkModal() {
+            if (isGameActive) return;
+            document.getElementById('bulk-amount').value = '';
+            document.getElementById('bulk-info').innerText = 'Введите сумму...';
+            document.getElementById('bulkModal').style.display = 'flex';
+        }
+
+        function closeBulkModal() {
+            document.getElementById('bulkModal').style.display = 'none';
+        }
+
+        function calculateBulkCost() {
+            const fromCurr = document.getElementById('bulk-from').value;
+            const toCurr = document.getElementById('bulk-to').value;
+            const targetAmountInput = document.getElementById('bulk-amount').value;
+            const infoDiv = document.getElementById('bulk-info');
+
+            if (fromCurr === toCurr) {
+                infoDiv.style.color = '#ff3366';
+                infoDiv.innerText = "Выберите разные валюты для перевода!";
+                return null;
+            }
+
+            const targetAmount = parseFormattedInput(targetAmountInput);
+
+            if (isNaN(targetAmount) || targetAmount <= 0) {
+                infoDiv.style.color = '#ffcc00';
+                infoDiv.innerText = "Введите желаемое количество для получения";
+                return null;
+            }
+
+            const targetValueInUSD = targetAmount * currencyValuesInUSD[toCurr];
+            const neededFromAmount = targetValueInUSD / currencyValuesInUSD[fromCurr];
+
+            const userHas = balances[fromCurr];
+            const isEnough = userHas >= neededFromAmount;
+
+            if (isEnough) {
+                infoDiv.style.color = '#00ff66';
+                infoDiv.innerHTML = `Потребуется: <b>${formatNumber(neededFromAmount)}</b> ${currencyNames[fromCurr]}<br><span style="font-size:0.8rem; color:#888;">(У вас есть: ${formatNumber(userHas)})</span>`;
+            } else {
+                infoDiv.style.color = '#ff3366';
+                infoDiv.innerHTML = `Недостаточно! Нужно: <b>${formatNumber(neededFromAmount)}</b> ${currencyNames[fromCurr]}<br><span style="font-size:0.8rem;">(У вас есть: ${formatNumber(userHas)})</span>`;
+            }
+
+            return { fromCurr, toCurr, neededFromAmount, targetAmount, isEnough };
+        }
+
+        function executeBulkExchange() {
+            const result = calculateBulkCost();
+            if (!result) return;
+
+            if (!result.isEnough) {
+                alert("У вас недостаточно средств для этого обмена!");
+                return;
+            }
+
+            balances[result.fromCurr] -= result.neededFromAmount;
+            balances[result.toCurr] += result.targetAmount;
+
+            updateUI();
+            saveGame();
+            closeBulkModal();
+            alert(`Успешно получено ${formatNumber(result.targetAmount)} ${currencyNames[result.toCurr]}!`);
+        }
+
+        /* Админ-Панель */
+        function openAdminModal() {
+            if (isGameActive) return;
+            document.getElementById('admin-pass-input').value = '';
+            document.getElementById('admin-amount-input').value = '';
+            document.getElementById('admin-pass-error').innerText = '';
+            document.getElementById('admin-step-pass').style.display = 'block';
+            document.getElementById('admin-step-amount').style.display = 'none';
+            
+            document.getElementById('adminModal').style.display = 'flex';
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').style.display = 'none';
+        }
+
+        function verifyPassword() {
+            const inputPass = document.getElementById('admin-pass-input').value;
+            const errorMsg = document.getElementById('admin-pass-error');
+
+            if (inputPass === 'NT9Zkotyxa') {
+                errorMsg.innerText = '';
+                document.getElementById('admin-step-pass').style.display = 'none';
+                document.getElementById('admin-step-amount').style.display = 'block';
+            } else if (inputPass === 'XD67') {
+                // Полное обнуление всех балансов
+                balances = { yellow: 0, blue: 0, green: 0, usd: 0 };
+                updateUI();
+                saveGame();
+                closeAdminModal();
+                alert('Введен код обнуления! Все ваши деньги и кубики сгорели.');
             } else {
                 errorMsg.innerText = 'Неверный пароль!';
             }
@@ -697,6 +1405,12 @@
                 saveGame();
             }
         }
+
+        loadGame();
+    </script>
+</body>
+</html>
+
 
         loadGame();
     </script>

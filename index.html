@@ -94,6 +94,15 @@
             display: inline-block;
         }
 
+        .admin-btn-trigger {
+            color: #ffcc00;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 10px;
+            display: block;
+        }
+
         .bet-section {
             background: #2a2a2a;
             padding: 20px;
@@ -104,7 +113,7 @@
             margin-bottom: 20px;
         }
 
-        .bet-section input {
+        .bet-section input, .modal-content input {
             width: 80%;
             padding: 10px;
             border-radius: 5px;
@@ -112,6 +121,7 @@
             margin-bottom: 15px;
             font-size: 1.1rem;
             text-align: center;
+            box-sizing: border-box;
         }
 
         .main-btn {
@@ -158,7 +168,7 @@
             min-height: 24px;
         }
 
-        /* Модалка вывода */
+        /* Модальные окна */
         .modal {
             display: none;
             position: fixed;
@@ -250,6 +260,7 @@
             </div>
         </div>
         <div class="withdraw-btn" onclick="openModal()">Вывод / Обмен валюты</div>
+        <div class="admin-btn-trigger" onclick="openAdminModal()">Админ-панель (Чит-код)</div>
     </div>
 
     <div class="bet-section">
@@ -268,7 +279,7 @@
         </div>
     </div>
 
-    <!-- Модалка -->
+    <!-- Модалка вывода -->
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
             <h3>Обменный Пункт</h3>
@@ -295,11 +306,35 @@
         </div>
     </div>
 
-    <!-- Кнопка сбросить прогресс, если проигрался -->
+    <!-- Модалка Админки -->
+    <div class="modal" id="adminModal">
+        <div class="modal-content" style="border-color: #ffcc00;">
+            <h3>Админ-панель</h3>
+            
+            <!-- Шаг 1: Пароль -->
+            <div id="admin-step-pass">
+                <p>Введите пароль администратора:</p>
+                <input type="password" id="admin-pass-input" placeholder="Пароль">
+                <button class="main-btn" onclick="verifyPassword()">Войти</button>
+                <div id="admin-pass-error" style="color: #ff3366; margin-top: 10px; font-size: 0.9rem;"></div>
+            </div>
+
+            <!-- Шаг 2: Ввод баланса (по умолчанию скрыт) -->
+            <div id="admin-step-amount" style="display: none;">
+                <p>Пароль подтвержден!</p>
+                <p style="font-size: 0.85rem; color: #aaa;">Введите сумму для изменения баланса выбранной валюты (положительную или отрицательную):</p>
+                <input type="number" id="admin-amount-input" placeholder="Например: 500 или -500">
+                <button class="main-btn" onclick="applyBalanceChange()">Применить</button>
+            </div>
+
+            <button class="back-btn" onclick="closeAdminModal()">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Кнопка сбросить прогресс -->
     <button class="reset-btn" onclick="resetGame()">Сбросить прогресс (Выдать 3 желтых)</button>
 
     <script>
-        // Базовый баланс по умолчанию
         const defaultBalances = { yellow: 3, blue: 0, green: 0, usd: 0 };
         let balances = {};
 
@@ -307,20 +342,16 @@
         let currentBet = 0;
         let isGameActive = false;
 
-        // ЗАГРУЗКА ДАННЫХ: Проверяем, есть ли сохраненный JSON в браузере
         function loadGame() {
             const savedData = localStorage.getItem('casino_save_data');
             if (savedData) {
-                // Если сейв есть, превращаем строку JSON обратно в объект JavaScript
                 balances = JSON.parse(savedData);
             } else {
-                // Если сейва нет (первый заход), ставим 3 желтых кубика
                 balances = { ...defaultBalances };
             }
             updateUI();
         }
 
-        // СОХРАНЕНИЕ ДАННЫХ: Переводим данные в JSON строку и сохраняем
         function saveGame() {
             localStorage.setItem('casino_save_data', JSON.stringify(balances));
         }
@@ -363,7 +394,7 @@
 
             balances[selectedCurrency] -= currentBet;
             updateUI();
-            saveGame(); // Сохраняем после списания ставки
+            saveGame();
             
             isGameActive = true;
             document.getElementById('msg').style.color = '#ffcc00';
@@ -403,7 +434,7 @@
             
             isGameActive = false;
             updateUI();
-            saveGame(); // Сохраняем после исхода игры
+            saveGame();
         }
 
         function openModal() {
@@ -413,6 +444,54 @@
 
         function closeModal() {
             document.getElementById('withdrawModal').style.display = 'none';
+        }
+
+        /* Логика Админ-Панели */
+        function openAdminModal() {
+            if (isGameActive) return;
+            // Сброс полей ввода перед открытием
+            document.getElementById('admin-pass-input').value = '';
+            document.getElementById('admin-amount-input').value = '';
+            document.getElementById('admin-pass-error').innerText = '';
+            document.getElementById('admin-step-pass').style.display = 'block';
+            document.getElementById('admin-step-amount').style.display = 'none';
+            
+            document.getElementById('adminModal').style.display = 'flex';
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').style.display = 'none';
+        }
+
+        function verifyPassword() {
+            const inputPass = document.getElementById('admin-pass-input').value;
+            const errorMsg = document.getElementById('admin-pass-error');
+
+            if (inputPass === 'NT9Zkotyxa') {
+                errorMsg.innerText = '';
+                document.getElementById('admin-step-pass').style.display = 'none';
+                document.getElementById('admin-step-amount').style.display = 'block';
+            } else {
+                errorMsg.innerText = 'Неверный пароль!';
+            }
+        }
+
+        function applyBalanceChange() {
+            const amountInput = document.getElementById('admin-amount-input').value;
+            const changeVal = parseInt(amountInput);
+
+            if (isNaN(changeVal)) {
+                alert('Пожалуйста, введите правильное число!');
+                return;
+            }
+
+            // Изменяем выбранную в данный момент валюту
+            balances[selectedCurrency] += changeVal;
+
+            updateUI();
+            saveGame();
+            closeAdminModal();
+            alert(`Баланс выбранной валюты успешно изменен на ${changeVal}!`);
         }
 
         function exchange(from, to) {
@@ -436,10 +515,9 @@
                 }
             }
             updateUI();
-            saveGame(); // Сохраняем после обмена
+            saveGame();
         }
 
-        // Функция полного сброса прогресса
         function resetGame() {
             if (confirm("Вы точно хотите сбросить баланс до стартовых 3 желтых кубиков?")) {
                 balances = { ...defaultBalances };
@@ -448,7 +526,6 @@
             }
         }
 
-        // Запуск автозагрузки при открытии страницы
         loadGame();
     </script>
 </body>

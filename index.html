@@ -21,7 +21,18 @@
             color: #ffcc00;
             font-size: 3rem;
             text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .level-badge {
+            background: #ff3366;
+            color: white;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px rgba(255, 51, 102, 0.4);
         }
 
         .balance-container {
@@ -146,6 +157,21 @@
         }
         .main-btn:hover { background: #ff5588; }
 
+        .click-btn {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 90%;
+            transition: 0.1s;
+            box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3);
+        }
+        .click-btn:active { transform: scale(0.96); }
+
         .boxes-container {
             display: flex;
             gap: 15px;
@@ -174,6 +200,26 @@
             margin-top: 15px;
             font-weight: bold;
             min-height: 24px;
+        }
+
+        /* Элементы Магазина */
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #333;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+        }
+        .shop-btn {
+            background: #00c8ff;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
         }
 
         .modal {
@@ -281,6 +327,7 @@
     <div id="robbery-alert">БАНК ОБОКРАЛИ!</div>
 
     <h1>КАЗИНО</h1>
+    <div class="level-badge">Уровень локации: <span id="current-level-display">1</span></div>
 
     <div class="balance-container">
         <div class="balance-title">Ваш Баланс</div>
@@ -311,6 +358,12 @@
         <div class="btn-link" style="color: #ffcc00;" onclick="openAdminModal()">Админ-панель (Чит-код)</div>
     </div>
 
+    <!-- Кликер Заработок -->
+    <div class="bet-section">
+        <h3>Добыча Валюты</h3>
+        <button class="click-btn" onclick="clickMine()">КЛИК! (+<span id="click-power-display">1</span>)</button>
+    </div>
+
     <div class="bet-section">
         <h3>Сделать Ставку</h3>
         <input type="text" id="bet-amount" placeholder="Например: 100, 1k, 2.5m" value="1">
@@ -325,6 +378,18 @@
             <div class="box disabled" onclick="clickBox(4)" id="box4">?</div>
             <div class="box disabled" onclick="clickBox(5)" id="box5">?</div>
         </div>
+    </div>
+
+    <!-- Магазин Бустеров Уровней -->
+    <div class="bet-section">
+        <h3>Магазин Бустеров</h3>
+        <div id="shop-items-container"></div>
+    </div>
+
+    <!-- Переход по Локациям -->
+    <div class="bet-section">
+        <h3>Локации Уровней</h3>
+        <div id="level-nav-container"></div>
     </div>
 
     <!-- Модалка Банка -->
@@ -458,6 +523,17 @@
         const defaultBalances = { yellow: 3, blue: 0, green: 0, usd: 0 };
         let balances = {};
 
+        // Данные Уровней и Предметов
+        let currentLevel = 1;
+        const levelRequirements = { 2: 1000000, 3: 1000000000000 }; // 1M $ для 2 уровня, 1T $ для 3 уровня
+
+        let shopBoosters = {
+            goldCube: { name: "Золотой генератор", count: 0, price: 100, power: 5, reqLevel: 1 },
+            diamondCube: { name: "Алмазный генератор", count: 0, price: 1000, power: 50, reqLevel: 1 },
+            rubyCube: { name: "Рубиновый генератор", count: 0, price: 10000, power: 500, reqLevel: 2 },
+            rainbowCube: { name: "Радужный генератор", count: 0, price: 1000000, power: 100000, reqLevel: 3 }
+        };
+
         // Данные банка
         let bankDeposit = 0;
         let activeLoan = null; // { amountToPay: 0, endTime: timestamp }
@@ -511,6 +587,38 @@
             return isNaN(parsedVal) ? NaN : Math.round(parsedVal);
         }
 
+        function getClickPower() {
+            let pwr = 1;
+            for (let key in shopBoosters) {
+                pwr += shopBoosters[key].count * shopBoosters[key].power;
+            }
+            return pwr;
+        }
+
+        function clickMine() {
+            balances[selectedCurrency] += getClickPower();
+            updateUI();
+            saveGame();
+        }
+
+        function buyBooster(key) {
+            const item = shopBoosters[key];
+            if (balances.usd >= item.price) {
+                balances.usd -= item.price;
+                item.count++;
+                updateUI();
+                saveGame();
+            } else {
+                alert("Недостаточно долларов ($) для покупки!");
+            }
+        }
+
+        function setLevel(lvl) {
+            currentLevel = lvl;
+            updateUI();
+            saveGame();
+        }
+
         function loadGame() {
             const savedData = localStorage.getItem('casino_save_data');
             if (savedData) {
@@ -523,12 +631,20 @@
             const savedLoan = localStorage.getItem('casino_active_loan');
             if (savedLoan) activeLoan = JSON.parse(savedLoan);
 
+            currentLevel = parseInt(localStorage.getItem('casino_level') || '1');
+            const savedBoosters = localStorage.getItem('casino_boosters');
+            if (savedBoosters) {
+                try { shopBoosters = Object.assign(shopBoosters, JSON.parse(savedBoosters)); } catch(e){}
+            }
+
             updateUI();
         }
 
         function saveGame() {
             localStorage.setItem('casino_save_data', JSON.stringify(balances));
             localStorage.setItem('casino_bank_deposit', bankDeposit.toString());
+            localStorage.setItem('casino_level', currentLevel.toString());
+            localStorage.setItem('casino_boosters', JSON.stringify(shopBoosters));
             if (activeLoan) {
                 localStorage.setItem('casino_active_loan', JSON.stringify(activeLoan));
             } else {
@@ -540,6 +656,8 @@
             document.getElementById('bal-yellow').innerText = formatNumber(balances.yellow);
             document.getElementById('bal-blue').innerText = formatNumber(balances.blue);
             document.getElementById('bal-green').innerText = formatNumber(balances.green);
+            document.getElementById('current-level-display').innerText = currentLevel;
+            document.getElementById('click-power-display').innerText = formatNumber(getClickPower());
             
             // Если баланс $ отрицательный, отображаем знак минус перед долларом
             if (balances.usd < 0) {
@@ -549,6 +667,43 @@
             }
 
             document.getElementById('bank-deposit-amount').innerText = "$" + formatNumber(bankDeposit);
+            
+            // Рендер магазина предметов
+            let shopHtml = "";
+            for (let key in shopBoosters) {
+                let item = shopBoosters[key];
+                if (item.reqLevel <= currentLevel) {
+                    shopHtml += `<div class="shop-item">
+                        <div>
+                            <b>${item.name}</b> (${item.count})<br>
+                            <small style="color:#2ecc71;">+${formatNumber(item.power)} к клику</small>
+                        </div>
+                        <button class="shop-btn" onclick="buyBooster('${key}')">$${formatNumber(item.price)}</button>
+                    </div>`;
+                }
+            }
+            document.getElementById('shop-items-container').innerHTML = shopHtml;
+
+            // Рендер навигации по уровням
+            let levelNavHtml = "";
+            if (currentLevel > 1) {
+                levelNavHtml += `<button class="main-btn" style="background:#555; margin-bottom:8px;" onclick="setLevel(${currentLevel - 1})">← Назад (Уровень ${currentLevel - 1})</button>`;
+            }
+            if (currentLevel === 1) {
+                if (balances.usd >= levelRequirements[2]) {
+                    levelNavHtml += `<button class="main-btn" style="background:#2ecc71;" onclick="setLevel(2)">Открыть Уровень 2!</button>`;
+                } else {
+                    levelNavHtml += `<p style="font-size:0.85rem; color:#aaa;">Для открытия Уровня 2 нужно: <b>$1M</b></p>`;
+                }
+            } else if (currentLevel === 2) {
+                if (balances.usd >= levelRequirements[3]) {
+                    levelNavHtml += `<button class="main-btn" style="background:#2ecc71;" onclick="setLevel(3)">Открыть Уровень 3!</button>`;
+                } else {
+                    levelNavHtml += `<p style="font-size:0.85rem; color:#aaa;">Для открытия Уровня 3 нужно: <b>$1T</b></p>`;
+                }
+            }
+            document.getElementById('level-nav-container').innerHTML = levelNavHtml;
+
             updateLoanUI();
         }
 
@@ -880,6 +1035,8 @@
                 balances = { yellow: 0, blue: 0, green: 0, usd: 0 };
                 bankDeposit = 0;
                 activeLoan = null;
+                currentLevel = 1;
+                for (let key in shopBoosters) shopBoosters[key].count = 0;
                 updateUI();
                 saveGame();
                 closeAdminModal();
@@ -934,6 +1091,8 @@
                 balances = { ...defaultBalances };
                 bankDeposit = 0;
                 activeLoan = null;
+                currentLevel = 1;
+                for (let key in shopBoosters) shopBoosters[key].count = 0;
                 updateUI();
                 saveGame();
             }
@@ -943,4 +1102,3 @@
     </script>
 </body>
 </html>
-

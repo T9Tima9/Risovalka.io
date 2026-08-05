@@ -14,6 +14,7 @@
             align-items: center;
             padding: 20px;
             margin: 0;
+            position: relative;
         }
 
         h1 {
@@ -85,32 +86,28 @@
             text-align: center;
         }
 
-        .withdraw-btn {
+        .btn-link {
             color: #00c8ff;
             text-decoration: underline;
             cursor: pointer;
             font-size: 1.1rem;
-            margin-top: 15px;
-            display: inline-block;
+            margin-top: 10px;
+            display: block;
         }
 
-        .bulk-exchange-btn {
-            color: #00ff66;
-            text-decoration: underline;
+        .bank-btn-trigger {
+            color: #ffcc00;
+            border: 2px solid #ffcc00;
+            padding: 8px 15px;
+            border-radius: 5px;
             cursor: pointer;
             font-size: 1.1rem;
-            margin-top: 10px;
-            display: block;
+            margin-top: 15px;
+            display: inline-block;
+            font-weight: bold;
+            background: rgba(255, 204, 0, 0.1);
         }
-
-        .admin-btn-trigger {
-            color: #ffcc00;
-            text-decoration: underline;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-top: 10px;
-            display: block;
-        }
+        .bank-btn-trigger:hover { background: rgba(255, 204, 0, 0.3); }
 
         .bet-section {
             background: #2a2a2a;
@@ -191,10 +188,10 @@
 
         .modal-content {
             background: #222;
-            padding: 30px;
+            padding: 25px;
             border-radius: 15px;
             border: 2px solid #00c8ff;
-            width: 350px;
+            width: 360px;
             text-align: center;
         }
 
@@ -241,9 +238,47 @@
             margin-top: 30px;
         }
         .reset-btn:hover { color: #ff3366; border-color: #ff3366; }
+
+        /* Банковский Баннер Ограбления */
+        #robbery-alert {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(150, 0, 0, 0.9);
+            color: #ffffff;
+            font-size: 4rem;
+            font-weight: 900;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            text-shadow: 0 0 20px black;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+
+        .bank-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .bank-tab {
+            flex: 1;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .bank-tab.active {
+            background: #ffcc00;
+            color: black;
+        }
     </style>
 </head>
 <body>
+
+    <div id="robbery-alert">БАНК ОБОКРАЛИ!</div>
 
     <h1>КАЗИНО</h1>
 
@@ -268,9 +303,12 @@
                 <span id="bal-usd">0</span>
             </div>
         </div>
-        <div class="withdraw-btn" onclick="openModal()">Быстрый обмен (по 1 шт)</div>
-        <div class="bulk-exchange-btn" onclick="openBulkModal()">Массовый перевод валюты</div>
-        <div class="admin-btn-trigger" onclick="openAdminModal()">Админ-панель (Чит-код)</div>
+        
+        <div class="bank-btn-trigger" onclick="openBankModal()">🏦 БАНК (Кредиты & Вклады)</div>
+
+        <div class="btn-link" onclick="openModal()">Быстрый обмен (по 1 шт)</div>
+        <div class="btn-link" style="color: #00ff66;" onclick="openBulkModal()">Массовый перевод валюты</div>
+        <div class="btn-link" style="color: #ffcc00;" onclick="openAdminModal()">Админ-панель (Чит-код)</div>
     </div>
 
     <div class="bet-section">
@@ -289,29 +327,73 @@
         </div>
     </div>
 
+    <!-- Модалка Банка -->
+    <div class="modal" id="bankModal">
+        <div class="modal-content" style="border-color: #ffcc00;">
+            <h3>Банковские Услуги</h3>
+            
+            <div class="bank-tabs">
+                <div class="bank-tab active" id="tab-loan-btn" onclick="switchBankTab('loan')">Кредит ($)</div>
+                <div class="bank-tab" id="tab-deposit-btn" onclick="switchBankTab('deposit')">Вклад ($)</div>
+            </div>
+
+            <!-- Вкладка Кредита -->
+            <div id="tab-loan">
+                <div id="loan-active-info" style="display: none; background: #333; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                    <p style="margin: 5px 0; color: #ffcc00;">Активный кредит!</p>
+                    <p style="margin: 5px 0;" id="loan-timer-display">Осталось времени: --:--</p>
+                    <p style="margin: 5px 0; font-size: 0.85rem;" id="loan-payback-display">К возврату: $0</p>
+                </div>
+
+                <div id="loan-form">
+                    <p style="font-size: 0.85rem; color: #aaa;">Макс. заем: 3x от ваших $ на балансе</p>
+                    <input type="text" id="loan-amount" placeholder="Сумма кредита ($)">
+                    
+                    <label style="font-size: 0.85rem; color: #aaa;">Срок займа:</label>
+                    <select id="loan-time">
+                        <option value="1">1 мин (+5%)</option>
+                        <option value="3">3 мин (+10%)</option>
+                        <option value="5">5 мин (+15%)</option>
+                        <option value="10">10 мин (+25%)</option>
+                    </select>
+
+                    <button class="main-btn" onclick="takeLoan()">Взять кредит</button>
+                </div>
+            </div>
+
+            <!-- Вкладка Депозита -->
+            <div id="tab-deposit" style="display: none;">
+                <p style="font-size: 0.85rem; color: #aaa;">Каждую минуту +5% к сумме. <br><span style="color: #ff3366;">Шанс 5%/мин, что банк обокрадут!</span></p>
+                <p style="font-size: 1.1rem; color: #00ff66;">В банке лежит: <b id="bank-deposit-amount">$0</b></p>
+                
+                <input type="text" id="deposit-amount" placeholder="Сумма ($)">
+                <button class="main-btn" style="background: #00c8ff; margin-bottom: 10px;" onclick="depositMoney()">Вложить</button>
+                <button class="main-btn" style="background: #2ecc71;" onclick="withdrawMoney()">Забрать все</button>
+            </div>
+
+            <button class="back-btn" onclick="closeBankModal()">Закрыть</button>
+        </div>
+    </div>
+
     <!-- Модалка быстрого вывода -->
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
             <h3>Обменный Пункт</h3>
-            
             <div class="exchange-row">
                 <h4>Желтый кубик ↔ 100$</h4>
                 <button class="ex-btn" onclick="exchange('yellow', 'usd')">Кубик в $</button>
                 <button class="ex-btn" onclick="exchange('usd', 'yellow')">$ в Кубик</button>
             </div>
-
             <div class="exchange-row">
                 <h4>Голубой кубик ↔ 500$</h4>
                 <button class="ex-btn" onclick="exchange('blue', 'usd')">Кубик в $</button>
                 <button class="ex-btn" onclick="exchange('usd', 'blue')">$ в Кубик</button>
             </div>
-
             <div class="exchange-row">
                 <h4>Изумрудный кубик ↔ 1000$</h4>
                 <button class="ex-btn" onclick="exchange('green', 'usd')">Кубик в $</button>
                 <button class="ex-btn" onclick="exchange('usd', 'green')">$ в Кубик</button>
             </div>
-
             <button class="back-btn" onclick="closeModal()">Назад</button>
         </div>
     </div>
@@ -320,7 +402,6 @@
     <div class="modal" id="bulkModal">
         <div class="modal-content" style="border-color: #00ff66;">
             <h3>Массовый Перевод</h3>
-            
             <label style="font-size: 0.85rem; color: #aaa;">Из какой валюты отдаем:</label>
             <select id="bulk-from" onchange="calculateBulkCost()">
                 <option value="yellow">Желтые кубики</option>
@@ -353,7 +434,6 @@
     <div class="modal" id="adminModal">
         <div class="modal-content" style="border-color: #ffcc00;">
             <h3>Админ-панель</h3>
-            
             <div id="admin-step-pass">
                 <p>Введите пароль администратора:</p>
                 <input type="password" id="admin-pass-input" placeholder="Пароль">
@@ -378,19 +458,12 @@
         const defaultBalances = { yellow: 3, blue: 0, green: 0, usd: 0 };
         let balances = {};
 
-        const currencyValuesInUSD = {
-            usd: 1,
-            yellow: 100,
-            blue: 500,
-            green: 1000
-        };
+        // Данные банка
+        let bankDeposit = 0;
+        let activeLoan = null; // { amountToPay: 0, endTime: timestamp }
 
-        const currencyNames = {
-            usd: "Долларов ($)",
-            yellow: "Желтых кубиков",
-            blue: "Голубых кубиков",
-            green: "Изумрудных кубиков"
-        };
+        const currencyValuesInUSD = { usd: 1, yellow: 100, blue: 500, green: 1000 };
+        const currencyNames = { usd: "Долларов ($)", yellow: "Желтых кубиков", blue: "Голубых кубиков", green: "Изумрудных кубиков" };
 
         let selectedCurrency = 'yellow';
         let currentBet = 0;
@@ -423,19 +496,11 @@
         function parseFormattedInput(str) {
             if (typeof str !== 'string') str = String(str);
             str = str.trim().toLowerCase().replace(',', '.');
-
             if (!str) return NaN;
 
-            const multipliers = {
-                'k': 1e3,
-                'm': 1e6,
-                'b': 1e9,
-                't': 1e12,
-                'p': 1e15,
-                'e': 1e18
-            };
-
+            const multipliers = { 'k': 1e3, 'm': 1e6, 'b': 1e9, 't': 1e12, 'p': 1e15, 'e': 1e18 };
             const lastChar = str.slice(-1);
+
             if (multipliers[lastChar]) {
                 const numberPart = parseFloat(str.slice(0, -1));
                 if (isNaN(numberPart)) return NaN;
@@ -453,20 +518,206 @@
             } else {
                 balances = { ...defaultBalances };
             }
+
+            bankDeposit = parseInt(localStorage.getItem('casino_bank_deposit') || '0');
+            const savedLoan = localStorage.getItem('casino_active_loan');
+            if (savedLoan) activeLoan = JSON.parse(savedLoan);
+
             updateUI();
         }
 
         function saveGame() {
             localStorage.setItem('casino_save_data', JSON.stringify(balances));
+            localStorage.setItem('casino_bank_deposit', bankDeposit.toString());
+            if (activeLoan) {
+                localStorage.setItem('casino_active_loan', JSON.stringify(activeLoan));
+            } else {
+                localStorage.removeItem('casino_active_loan');
+            }
         }
 
         function updateUI() {
             document.getElementById('bal-yellow').innerText = formatNumber(balances.yellow);
             document.getElementById('bal-blue').innerText = formatNumber(balances.blue);
             document.getElementById('bal-green').innerText = formatNumber(balances.green);
-            document.getElementById('bal-usd').innerText = formatNumber(balances.usd);
+            
+            // Если баланс $ отрицательный, отображаем знак минус перед долларом
+            if (balances.usd < 0) {
+                document.getElementById('bal-usd').innerText = "-" + formatNumber(Math.abs(balances.usd));
+            } else {
+                document.getElementById('bal-usd').innerText = formatNumber(balances.usd);
+            }
+
+            document.getElementById('bank-deposit-amount').innerText = "$" + formatNumber(bankDeposit);
+            updateLoanUI();
         }
 
+        /* ТАЙМЕРЫ И БАНКОВСКИЕ ЦИКЛЫ */
+        setInterval(() => {
+            // Обработка активного кредита
+            if (activeLoan) {
+                const now = Date.now();
+                if (now >= activeLoan.endTime) {
+                    // Время вышло - списываем с баланса $
+                    balances.usd -= activeLoan.amountToPay;
+                    alert(`Время кредита истекло! С вашего счета списано $${formatNumber(activeLoan.amountToPay)}`);
+                    activeLoan = null;
+                    saveGame();
+                    updateUI();
+                } else {
+                    updateLoanUI();
+                }
+            }
+        }, 1000);
+
+        // Минутный цикл депозита и шанса ограбления
+        setInterval(() => {
+            if (bankDeposit > 0) {
+                // Шанс 5% на ограбление
+                if (Math.random() < 0.05) {
+                    bankDeposit = 0;
+                    saveGame();
+                    updateUI();
+                    triggerRobberyAlert();
+                } else {
+                    // +5% к депозиту
+                    bankDeposit = Math.round(bankDeposit * 1.05);
+                    saveGame();
+                    updateUI();
+                }
+            }
+        }, 60000);
+
+        function triggerRobberyAlert() {
+            const alertElem = document.getElementById('robbery-alert');
+            alertElem.style.display = 'flex';
+            setTimeout(() => {
+                alertElem.style.display = 'none';
+            }, 5000);
+        }
+
+        /* ФУНКЦИИ БАНКА */
+        function openBankModal() {
+            if (isGameActive) return;
+            document.getElementById('bankModal').style.display = 'flex';
+            updateLoanUI();
+        }
+
+        function closeBankModal() {
+            document.getElementById('bankModal').style.display = 'none';
+        }
+
+        function switchBankTab(tab) {
+            if (tab === 'loan') {
+                document.getElementById('tab-loan').style.display = 'block';
+                document.getElementById('tab-deposit').style.display = 'none';
+                document.getElementById('tab-loan-btn').classList.add('active');
+                document.getElementById('tab-deposit-btn').classList.remove('active');
+            } else {
+                document.getElementById('tab-loan').style.display = 'none';
+                document.getElementById('tab-deposit').style.display = 'block';
+                document.getElementById('tab-loan-btn').classList.remove('active');
+                document.getElementById('tab-deposit-btn').classList.add('active');
+            }
+        }
+
+        function takeLoan() {
+            if (activeLoan) {
+                alert("У вас уже есть невыплаченный кредит!");
+                return;
+            }
+
+            const inputVal = document.getElementById('loan-amount').value;
+            const amount = parseFormattedInput(inputVal);
+            const timeMinutes = parseInt(document.getElementById('loan-time').value);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Введите правильную сумму кредита!");
+                return;
+            }
+
+            const maxLoanAllowed = Math.max(0, balances.usd * 3);
+
+            if (balances.usd <= 0 || amount > maxLoanAllowed) {
+                alert(`Вы можете взять в кредит не более 3х от вашего текущего $ баланса! (Максимум: $${formatNumber(maxLoanAllowed)})`);
+                return;
+            }
+
+            let percent = 0.05;
+            if (timeMinutes === 3) percent = 0.10;
+            if (timeMinutes === 5) percent = 0.15;
+            if (timeMinutes === 10) percent = 0.25;
+
+            const amountToPay = Math.round(amount * (1 + percent));
+            const endTime = Date.now() + (timeMinutes * 60 * 1000);
+
+            activeLoan = { amountToPay, endTime };
+            balances.usd += amount;
+
+            saveGame();
+            updateUI();
+            alert(`Кредит на $${formatNumber(amount)} получен! Вернуть через ${timeMinutes} мин: $${formatNumber(amountToPay)}`);
+        }
+
+        function updateLoanUI() {
+            const activeInfo = document.getElementById('loan-active-info');
+            const loanForm = document.getElementById('loan-form');
+
+            if (activeLoan) {
+                activeInfo.style.display = 'block';
+                loanForm.style.display = 'none';
+
+                const timeLeftSec = Math.max(0, Math.floor((activeLoan.endTime - Date.now()) / 1000));
+                const mins = Math.floor(timeLeftSec / 60);
+                const secs = timeLeftSec % 60;
+
+                document.getElementById('loan-timer-display').innerText = `Осталось времени: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                document.getElementById('loan-payback-display').innerText = `К возврату: $${formatNumber(activeLoan.amountToPay)}`;
+            } else {
+                activeInfo.style.display = 'none';
+                loanForm.style.display = 'block';
+            }
+        }
+
+        function depositMoney() {
+            const inputVal = document.getElementById('deposit-amount').value;
+            const amount = parseFormattedInput(inputVal);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Введите корректную сумму для вклада!");
+                return;
+            }
+
+            if (balances.usd < amount) {
+                alert("Недостаточно долларов на балансе!");
+                return;
+            }
+
+            balances.usd -= amount;
+            bankDeposit += amount;
+            document.getElementById('deposit-amount').value = '';
+
+            saveGame();
+            updateUI();
+            alert(`Успешно положено на вклад $${formatNumber(amount)}!`);
+        }
+
+        function withdrawMoney() {
+            if (bankDeposit <= 0) {
+                alert("В банке нет денег для снятия!");
+                return;
+            }
+
+            balances.usd += bankDeposit;
+            const temp = bankDeposit;
+            bankDeposit = 0;
+
+            saveGame();
+            updateUI();
+            alert(`Вы забрали $${formatNumber(temp)} из банка!`);
+        }
+
+        /* ОСНОВНАЯ ИГРОВАЯ ЛОГИКА */
         function selectCurrency(currency) {
             if (isGameActive) return;
             selectedCurrency = currency;
@@ -541,27 +792,17 @@
             saveGame();
         }
 
-        /* Быстрый Обмен */
-        function openModal() {
-            if (isGameActive) return;
-            document.getElementById('withdrawModal').style.display = 'flex';
-        }
+        /* МОДАЛКИ И ОБМЕНЫ */
+        function openModal() { if (!isGameActive) document.getElementById('withdrawModal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('withdrawModal').style.display = 'none'; }
 
-        function closeModal() {
-            document.getElementById('withdrawModal').style.display = 'none';
-        }
-
-        /* Массовый Обмен */
         function openBulkModal() {
             if (isGameActive) return;
             document.getElementById('bulk-amount').value = '';
             document.getElementById('bulk-info').innerText = 'Введите сумму...';
             document.getElementById('bulkModal').style.display = 'flex';
         }
-
-        function closeBulkModal() {
-            document.getElementById('bulkModal').style.display = 'none';
-        }
+        function closeBulkModal() { document.getElementById('bulkModal').style.display = 'none'; }
 
         function calculateBulkCost() {
             const fromCurr = document.getElementById('bulk-from').value;
@@ -571,30 +812,28 @@
 
             if (fromCurr === toCurr) {
                 infoDiv.style.color = '#ff3366';
-                infoDiv.innerText = "Выберите разные валюты для перевода!";
+                infoDiv.innerText = "Выберите разные валюты!";
                 return null;
             }
 
             const targetAmount = parseFormattedInput(targetAmountInput);
-
             if (isNaN(targetAmount) || targetAmount <= 0) {
                 infoDiv.style.color = '#ffcc00';
-                infoDiv.innerText = "Введите желаемое количество для получения";
+                infoDiv.innerText = "Введите желаемое количество";
                 return null;
             }
 
             const targetValueInUSD = targetAmount * currencyValuesInUSD[toCurr];
             const neededFromAmount = targetValueInUSD / currencyValuesInUSD[fromCurr];
-
             const userHas = balances[fromCurr];
             const isEnough = userHas >= neededFromAmount;
 
             if (isEnough) {
                 infoDiv.style.color = '#00ff66';
-                infoDiv.innerHTML = `Потребуется: <b>${formatNumber(neededFromAmount)}</b> ${currencyNames[fromCurr]}<br><span style="font-size:0.8rem; color:#888;">(У вас есть: ${formatNumber(userHas)})</span>`;
+                infoDiv.innerHTML = `Потребуется: <b>${formatNumber(neededFromAmount)}</b> ${currencyNames[fromCurr]}`;
             } else {
                 infoDiv.style.color = '#ff3366';
-                infoDiv.innerHTML = `Недостаточно! Нужно: <b>${formatNumber(neededFromAmount)}</b> ${currencyNames[fromCurr]}<br><span style="font-size:0.8rem;">(У вас есть: ${formatNumber(userHas)})</span>`;
+                infoDiv.innerHTML = `Недостаточно! Нужно: <b>${formatNumber(neededFromAmount)}</b> ${currencyNames[fromCurr]}`;
             }
 
             return { fromCurr, toCurr, neededFromAmount, targetAmount, isEnough };
@@ -603,22 +842,20 @@
         function executeBulkExchange() {
             const result = calculateBulkCost();
             if (!result) return;
-
             if (!result.isEnough) {
-                alert("У вас недостаточно средств для этого обмена!");
+                alert("Недостаточно средств!");
                 return;
             }
 
             balances[result.fromCurr] -= result.neededFromAmount;
             balances[result.toCurr] += result.targetAmount;
-
             updateUI();
             saveGame();
             closeBulkModal();
             alert(`Успешно получено ${formatNumber(result.targetAmount)} ${currencyNames[result.toCurr]}!`);
         }
 
-        /* Админ-Панель */
+        /* АДМИНКА */
         function openAdminModal() {
             if (isGameActive) return;
             document.getElementById('admin-pass-input').value = '';
@@ -626,13 +863,10 @@
             document.getElementById('admin-pass-error').innerText = '';
             document.getElementById('admin-step-pass').style.display = 'block';
             document.getElementById('admin-step-amount').style.display = 'none';
-            
             document.getElementById('adminModal').style.display = 'flex';
         }
 
-        function closeAdminModal() {
-            document.getElementById('adminModal').style.display = 'none';
-        }
+        function closeAdminModal() { document.getElementById('adminModal').style.display = 'none'; }
 
         function verifyPassword() {
             const inputPass = document.getElementById('admin-pass-input').value;
@@ -643,12 +877,13 @@
                 document.getElementById('admin-step-pass').style.display = 'none';
                 document.getElementById('admin-step-amount').style.display = 'block';
             } else if (inputPass === 'XD67') {
-                // Полное обнуление всех балансов
                 balances = { yellow: 0, blue: 0, green: 0, usd: 0 };
+                bankDeposit = 0;
+                activeLoan = null;
                 updateUI();
                 saveGame();
                 closeAdminModal();
-                alert('Введен код обнуления! Все ваши деньги и кубики сгорели.');
+                alert('Код сработал! Абсолютно все накопления сброшены.');
             } else {
                 errorMsg.innerText = 'Неверный пароль!';
             }
@@ -659,16 +894,15 @@
             const changeVal = parseFormattedInput(amountInput);
 
             if (isNaN(changeVal)) {
-                alert('Пожалуйста, введите правильную сумму!');
+                alert('Введите правильное значение!');
                 return;
             }
 
             balances[selectedCurrency] += changeVal;
-
             updateUI();
             saveGame();
             closeAdminModal();
-            alert(`Баланс выбранной валюты изменен на: ${formatNumber(changeVal)}!`);
+            alert(`Баланс изменен на: ${formatNumber(changeVal)}!`);
         }
 
         function exchange(from, to) {
@@ -679,7 +913,7 @@
                     balances[from] -= 1;
                     balances.usd += rates[from];
                 } else {
-                    alert("У вас нет этого кубика для обмена!");
+                    alert("У вас нет этого кубика!");
                     return;
                 }
             } else if (from === 'usd' && to !== 'usd') {
@@ -696,8 +930,10 @@
         }
 
         function resetGame() {
-            if (confirm("Вы точно хотите сбросить баланс до стартовых 3 желтых кубиков?")) {
+            if (confirm("Вы точно хотите сбросить весь прогресс?")) {
                 balances = { ...defaultBalances };
+                bankDeposit = 0;
+                activeLoan = null;
                 updateUI();
                 saveGame();
             }
